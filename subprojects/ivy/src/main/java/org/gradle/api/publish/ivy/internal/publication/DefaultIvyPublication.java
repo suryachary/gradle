@@ -257,7 +257,11 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
     }
 
     public FileCollection getPublishableFiles() {
-        return new UnionFileCollection(ivyArtifacts.getFiles(), ivyDescriptorFile, gradleModuleDescriptorFile);
+        if (gradleModuleDescriptorFile == null) {
+            return new UnionFileCollection(ivyArtifacts.getFiles(), ivyDescriptorFile);
+        } else {
+            return new UnionFileCollection(ivyArtifacts.getFiles(), ivyDescriptorFile, gradleModuleDescriptorFile);
+        }
     }
 
     public IvyPublicationIdentity getIdentity() {

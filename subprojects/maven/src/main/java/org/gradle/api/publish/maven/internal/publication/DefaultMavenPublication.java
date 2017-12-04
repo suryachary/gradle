@@ -255,7 +255,11 @@ public class DefaultMavenPublication implements MavenPublicationInternal {
     }
 
     public FileCollection getPublishableFiles() {
-        return new UnionFileCollection(mavenArtifacts.getFiles(), pomFile, moduleMetadataFile);
+        if (moduleMetadataFile == null) {
+            return new UnionFileCollection(mavenArtifacts.getFiles(), pomFile);
+        } else {
+            return new UnionFileCollection(mavenArtifacts.getFiles(), pomFile, moduleMetadataFile);
+        }
     }
 
     public MavenProjectIdentity getMavenProjectIdentity() {
