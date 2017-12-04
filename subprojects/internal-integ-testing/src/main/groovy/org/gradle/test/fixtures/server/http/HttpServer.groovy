@@ -153,8 +153,8 @@ class HttpServer extends ServerWithExpectations implements HttpServerFixture {
         allow(path, false, ['GET'], notFound())
     }
 
-    private Action fileHandler(String path, File srcFile) {
-        return new SendFileAction(path, srcFile, false)
+    private Action fileHandler(String path, File srcFile, int blockingSeconds = 0) {
+        return new SendFileAction(path, srcFile, false, blockingSeconds)
     }
 
     private Action revalidateFileHandler(String path, File srcFile) {
@@ -165,18 +165,25 @@ class HttpServer extends ServerWithExpectations implements HttpServerFixture {
         private final String path
         private final File srcFile
         private final boolean revalidate
+        private final int blockingSeconds
 
-        SendFileAction(String path, File srcFile, boolean revalidate) {
+        SendFileAction(String path, File srcFile, boolean revalidate, int blockingSeconds = 0) {
             super("return contents of $srcFile.name")
             this.srcFile = srcFile
             this.path = path
             this.revalidate = revalidate
+            this.blockingSeconds = blockingSeconds
         }
 
         void handle(HttpServletRequest request, HttpServletResponse response) {
             if (beforeHandle) {
                 beforeHandle.execute(request)
             }
+
+            if (blockingSeconds > 0) {
+                Thread.sleep(blockingSeconds * 1000)
+            }
+
             try {
                 if (expectedUserAgent != null) {
                     String receivedUserAgent = request.getHeader("User-Agent")
@@ -326,10 +333,10 @@ class HttpServer extends ServerWithExpectations implements HttpServerFixture {
     }
 
     /**
-     * Allows one GET request for the given URL. Reads the request content from the given file.
+     * Allows one GET request for the given URL. Reads the request content from the given file. A blocking time can be specified.
      */
-    HttpResourceInteraction expectGet(String path, File srcFile) {
-        return expect(path, false, ['GET'], fileHandler(path, srcFile))
+    HttpResourceInteraction expectGet(String path, File srcFile, int blockingSeconds = 0) {
+        return expect(path, false, ['GET'], fileHandler(path, srcFile, blockingSeconds))
     }
 
     /**

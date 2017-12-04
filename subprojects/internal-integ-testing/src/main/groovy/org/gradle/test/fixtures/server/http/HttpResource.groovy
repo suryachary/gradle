@@ -33,6 +33,10 @@ abstract class HttpResource extends AbstractHttpResource {
         server.expectGet(getPath(), file)
     }
 
+    void expectGetBlocking(int seconds) {
+        server.expectGet(getPath(), file, seconds)
+    }
+
     void allowGetOrHead(String userName, String password) {
         server.allowGetOrHead(getPath(), userName, password, file)
     }
