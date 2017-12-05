@@ -28,10 +28,13 @@ import org.gradle.api.tasks.util.PatternSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PatternSpecFactory {
     public static final PatternSpecFactory INSTANCE = new PatternSpecFactory();
+    private final Map<Boolean, Spec<FileTreeElement>> defaultExcludeSpecs = new HashMap<Boolean, Spec<FileTreeElement>>(2);
 
     public Spec<FileTreeElement> createSpec(PatternSet patternSet) {
         return Specs.intersect(createIncludeSpec(patternSet), Specs.negate(createExcludeSpec(patternSet)));
@@ -56,10 +59,7 @@ public class PatternSpecFactory {
             allExcludeSpecs.add(createSpec(patternSet.getExcludes(), false, patternSet.isCaseSensitive()));
         }
 
-        List<String> defaultExcludes = Arrays.asList(DirectoryScanner.getDefaultExcludes());
-        if (!defaultExcludes.isEmpty()) {
-            allExcludeSpecs.add(createSpec(defaultExcludes, false, patternSet.isCaseSensitive()));
-        }
+        allExcludeSpecs.add(getDefaultExcludeSpec(patternSet.isCaseSensitive()));
 
         allExcludeSpecs.addAll(patternSet.getExcludeSpecs());
 
@@ -68,6 +68,16 @@ public class PatternSpecFactory {
         } else {
             return Specs.union(allExcludeSpecs);
         }
+    }
+
+    private synchronized Spec<FileTreeElement> getDefaultExcludeSpec(boolean caseSensitive) {
+        Spec<FileTreeElement> specs = defaultExcludeSpecs.get(caseSensitive);
+        if (specs == null) {
+            List<String> defaultExcludes = Arrays.asList(DirectoryScanner.getDefaultExcludes());
+            specs = createSpec(defaultExcludes, false, caseSensitive);
+            defaultExcludeSpecs.put(caseSensitive, specs);
+        }
+        return specs;
     }
 
     protected Spec<FileTreeElement> createSpec(Collection<String> patterns, boolean include, boolean caseSensitive) {
