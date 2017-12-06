@@ -201,7 +201,6 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
     private boolean doAdd(T toAdd) {
         if (getStore().add(toAdd)) {
             didAdd(toAdd);
-            eventRegister.getAddAction().execute(toAdd);
             return true;
         } else {
             return false;
@@ -209,6 +208,7 @@ public class DefaultDomainObjectCollection<T> extends AbstractCollection<T> impl
     }
 
     protected void didAdd(T toAdd) {
+        eventRegister.getAddAction().execute(toAdd);
     }
 
     public boolean addAll(Collection<? extends T> c) {

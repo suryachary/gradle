@@ -25,13 +25,15 @@ import org.gradle.api.plugins.UnknownPluginException;
 import org.gradle.api.specs.Spec;
 import org.gradle.plugin.use.internal.DefaultPluginId;
 
+import java.util.Collection;
+
 public class DefaultPluginContainer extends DefaultPluginCollection<Plugin> implements PluginContainer {
 
     private final PluginRegistry pluginRegistry;
     private final PluginManagerInternal pluginManager;
 
-    public DefaultPluginContainer(PluginRegistry pluginRegistry, final PluginManagerInternal pluginManager) {
-        super(Plugin.class);
+    public DefaultPluginContainer(PluginRegistry pluginRegistry, final PluginManagerInternal pluginManager, Collection<Plugin> values) {
+        super(Plugin.class, values);
         this.pluginRegistry = pluginRegistry;
         this.pluginManager = pluginManager;
 
@@ -41,6 +43,36 @@ public class DefaultPluginContainer extends DefaultPluginCollection<Plugin> impl
                 pluginManager.addImperativePlugin(plugin.getClass());
             }
         });
+    }
+
+    @Override
+    public void didAdd(Plugin toAdd) {
+        super.didAdd(toAdd);
+    }
+
+    @Override
+    public boolean add(Plugin toAdd) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends Plugin> c) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear() {
+        throw new UnsupportedOperationException();
     }
 
     public Plugin apply(String id) {
@@ -144,5 +176,4 @@ public class DefaultPluginContainer extends DefaultPluginCollection<Plugin> impl
 
         return super.withType(type);
     }
-
 }

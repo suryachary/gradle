@@ -99,6 +99,7 @@ public class DefaultNamedDomainObjectCollection<T> extends DefaultDomainObjectCo
 
     @Override
     protected void didAdd(T toAdd) {
+        super.didAdd(toAdd);
         index.put(namer.determineName(toAdd), toAdd);
     }
 
