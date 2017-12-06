@@ -436,17 +436,15 @@ class DefaultServiceRegistryTest extends Specification {
         registry.get(String)
 
         then:
-        ServiceCreationException e = thrown()
-        e.message == "Cannot create service of type Integer using ProviderWithCycle.createInteger() as there is a problem with parameter #1 of type String."
-        e.cause.message == 'A service dependency cycle was detected: Integer > String > String.'
+        ServiceValidationException e = thrown()
+        e.message == 'A service dependency cycle was detected: String > Integer > String.'
 
         when:
         registry.getAll(Number)
 
         then:
         e = thrown()
-        e.message == "Cannot create service of type Integer using ProviderWithCycle.createInteger() as there is a problem with parameter #1 of type String."
-        e.cause.message == 'A service dependency cycle was detected: Integer > String > String.'
+        e.message == 'A service dependency cycle was detected: Integer > String > Integer.'
     }
 
     def failsWhenAProviderFactoryMethodReturnsNull() {

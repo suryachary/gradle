@@ -31,13 +31,12 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.util.AbstractList;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.Formatter;
 import java.util.IdentityHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -643,12 +642,13 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
     }
 
     private static abstract class SingletonService extends ManagedObjectProvider<Object> implements ServiceProvider {
+        private enum BindState { UNBOUND, BINDING, BOUND }
         final Type serviceType;
         final Class serviceClass;
 
         // cached for performance
         Class factoryElementType;
-        boolean bound;
+        BindState state = BindState.UNBOUND;
 
         SingletonService(Type serviceType) {
             this.serviceType = serviceType;
@@ -666,9 +666,20 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
         }
 
         private ServiceProvider prepare(LookupContext context) {
-            if (!bound) {
-                bind(context);
-                bound = true;
+            if (state == BindState.BINDING) {
+                ServiceCycleException cycle = new ServiceCycleException();
+                cycle.prepend(serviceType);
+                throw cycle;
+            }
+            if (state == BindState.UNBOUND) {
+                state = BindState.BINDING;
+                try {
+                    bind(context);
+                    state = BindState.BOUND;
+                } catch (RuntimeException e) {
+                    state = BindState.UNBOUND;
+                    throw e;
+                }
             }
             return this;
         }
@@ -768,6 +779,9 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
                         paramProviders[i] = paramProvider;
                         paramProvider.requiredBy(this);
                     }
+                } catch (ServiceCycleException e) {
+                    e.prepend(serviceType);
+                    throw e;
                 } catch (ServiceValidationException e) {
                     throw new ServiceCreationException(String.format("Cannot create service of type %s using %s.%s() as there is a problem with parameter #%s of type %s.",
                         format(serviceType),
@@ -1251,31 +1265,8 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
     }
 
     private static class DefaultLookupContext implements LookupContext {
-        private final Deque<Type> visiting = new ArrayDeque<Type>(3);
 
         public ServiceProvider find(Type serviceType, Provider provider) {
-            if (visiting.contains(serviceType)) {
-                cycleDetected(serviceType);
-            }
-            visiting.push(serviceType);
-            try {
-                return getServiceProvider(serviceType, provider);
-            } finally {
-                visiting.pop();
-            }
-        }
-
-        private void cycleDetected(Type serviceType) {
-            StringBuilder cycle = new StringBuilder();
-            for (Type visited : visiting) {
-                cycle.append(format(visited)).append(" > ");
-            }
-            cycle.append(format(serviceType));
-
-            throw new ServiceValidationException(String.format("A service dependency cycle was detected: %s.", cycle));
-        }
-
-        public ServiceProvider getServiceProvider(Type serviceType, Provider provider) {
             BiFunction<ServiceProvider, LookupContext, Provider> function = SERVICE_TYPE_PROVIDER_CACHE.get(serviceType);
             if (function == null) {
                 function = createServiceProviderFactory(serviceType);
@@ -1419,6 +1410,37 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
         }
         if (serviceClass.isAnnotation()) {
             throw new ServiceValidationException("Locating services with annotation type is not supported.");
+        }
+    }
+
+    private static class ServiceCycleException extends ServiceValidationException {
+        private final LinkedList<Type> cycle = new LinkedList<Type>();
+
+        private ServiceCycleException() {
+            super("");
+        }
+
+        public void prepend(Type node) {
+            cycle.addFirst(node);
+        }
+
+        @Override
+        public String getMessage() {
+            StringBuilder message = new StringBuilder();
+            for (int i = 0; i < cycle.size(); i++) {
+                Type visited = cycle.get(i);
+                message.append(format(visited));
+                if (i != cycle.size() - 1) {
+                    message.append(" > ");
+                }
+            }
+
+            return String.format("A service dependency cycle was detected: %s.", message);
+        }
+
+        @Override
+        public String getLocalizedMessage() {
+            return getMessage();
         }
     }
 }
